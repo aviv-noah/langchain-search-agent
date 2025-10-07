@@ -46,7 +46,7 @@ func main() {
 	result, err := executor.Call(
 		context.Background(),
 		map[string]any{
-			"input": "Search for 3 job postings for an ai engineer using langchain in tlv area on linkedin with their urls and list their details",
+			"input": "Search for 3 job postings for an ai engineer using langchain in tel aviv area on linkedin and list their details",
 		},
 	)
 	if err != nil {
