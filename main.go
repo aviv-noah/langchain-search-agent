@@ -2,12 +2,16 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"helpers"
 	"os"
+	"search-agent/prompt"
+	"search-agent/schemas"
 	"tavily-go-api/pkg/tavily"
 
 	"github.com/tmc/langchaingo/agents"
 	"github.com/tmc/langchaingo/llms/openai"
+	"github.com/tmc/langchaingo/prompts"
 	"github.com/tmc/langchaingo/tools"
 )
 
@@ -32,11 +36,22 @@ func main() {
 	agentTools := []tools.Tool{
 		tsearch,
 	}
+	ReActPrompt := prompt.REACT_PROMPT_WITH_FORMAT_INSTRUCTIONS
+	promptTemplate := prompts.NewPromptTemplate(
+		ReActPrompt,
+		[]string{"tool_names", "input", "agent_scratchpad"},
+	)
+	// Allow us to preformat our prompt, if we already have some variables
+	// that we know will always be the same.
+	promptTemplate.PartialVariables = map[string]any{
+		"format_instructions": schemas.GetFormatInstructions(),
+	}
 
 	// Create a ReAct-style agent
 	agent := agents.NewOneShotAgent(
 		llm,
 		agentTools,
+		agents.WithPrompt(promptTemplate),
 	)
 
 	// Create the executor (AgentExecutor equivalent)
@@ -46,11 +61,21 @@ func main() {
 	result, err := executor.Call(
 		context.Background(),
 		map[string]any{
-			"input": "Search for 3 job postings for an ai engineer using langchain in tel aviv area on linkedin and list their details",
+			"input":      "Search for 3 job postings for an ai engineer using langchain in tel aviv area on linkedin and list their details",
+			"tool_names": "tavily",
+			"tools":      "tavily",
 		},
 	)
 	if err != nil {
 		panic(err)
 	}
-	println(result["output"].(string))
+
+	// Validate and parse output
+	var agentResp schemas.AgentResponse
+	err = json.Unmarshal([]byte(result["output"].(string)), &agentResp)
+	if err != nil {
+		panic(err)
+	}
+	println(agentResp.ToJSON())
+	//println(agentResp.Answer)
 }
